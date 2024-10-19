@@ -1,0 +1,35 @@
+div#notebook{
+	overflow: scroll !important;
+}
+
+div#notebook p{
+
+	text-align: justify;
+	font-family: 'Old Standard TT', serif; 	
+
+}
+
+/* Code snippets */
+div.highlight{
+	background-color: #3892a87a;
+}
+
+
+/* kadlu logo */
+
+img#kadlu-logo{
+	border-radius: 0%;
+	background-color: white;
+	height: 50%;
+	width: 50%;
+}
+
+
+.kadlu-sidebar-text {
+    color: black;
+}
+
+div.wy-side-nav-search .version {
+    color: black;
+    font-weight: bold;
+}

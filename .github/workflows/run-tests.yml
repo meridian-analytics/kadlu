@@ -1,0 +1,42 @@
+name: run tests
+run-name: ${{ github.actor }} run tests
+on: [push]
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"      
+      
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: Install kadlu #required for testing jupyter notebook tutorials
+        run: |
+          python setup.py sdist
+          pip install dist/kadlu-*.tar.gz
+
+      - name: Install pytest
+        run: pip install pytest pytest-cov
+
+    # run tests and obtain coverage
+      - name: Run test and obtain coverage
+        run: |
+          coverage run -m pytest
+          coverage report -i
+          coverage xml -i
+
+#  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+#  artifacts:
+#    reports:
+#      coverage_report:
+#        coverage_format: cobertura
+#        path: coverage.xml
+

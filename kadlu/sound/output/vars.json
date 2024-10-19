@@ -1,0 +1,289 @@
+{
+  "SPL_map": {
+    "dimensions": ["X","Y", "Z","T","F"],
+    "dtype": "f8",
+    "zlib": true,
+    "property": {
+      "_FillValue": null,
+      "units": "dB",
+      "standard_name": "sound_pressure_level_in_water",
+      "long_name": "sound_pressure_level_in_water_produced_by_ships",
+      "coverage_content_type": "modelResult",
+      "coordinates": "on lat depth time freq",
+      "grid_mapping": "proj_lambert: x y proj_latlon: lat lon",
+      "cell_method": "time: area: depth: point"
+    }
+  },
+  "risk_map": {
+    "dimensions": ["X","Y","Z", "SPL","T","F"],
+    "dtype": "f8",
+    "zlib": true,
+    "property": {
+      "_FillValue": null,
+      "comment": "A standard deviation of 3dB was used around the timesteps values using the normal distribution",
+      "standard_name": "",
+      "long_name": "probability_to_exceed_sound_pressure_level_in_water_threshold",
+      "units": "1",
+      "coverage_content_type": "modelResult",
+      "coordinates": "lon lat depth spl time freq",
+      "grid_mapping": "proj_lambert: x y proj_latlon: lat lon",
+      "valid_range": [0, 1],
+      "cell_methods": "area: depth: point time: mean (interval: 30 minutes comment: cumulative distribution function)"
+    }
+  },
+  "quantile_map": {
+    "dimensions": ["X","Y","Z", "Q","T","F"],
+    "dtype": "f8",
+    "zlib": true,
+    "property": {
+      "_FillValue": null,
+      "comment": "A standard deviation of 3dB was used around the timesteps values using the normal distribution",
+      "standard_name": "",
+      "long_name": "quantile_of_sound_pressure_level_in_water",
+      "units": "dB",
+      "coverage_content_type": "modelResult",
+      "coordinates": "lon lat depth spl time freq",
+      "grid_mapping": "proj_lambert: x y proj_latlon: lat lon",
+      "valid_range": [0, 1],
+      "cell_methods": "area: depth: point time: mean (interval: 30 minutes comment: cumulative distribution function)"
+    }
+  },
+  "lon": {
+    "dimensions": ["X", "Y"],
+    "dtype": "f8",
+    "zlib": true,
+    "property": {
+      "standard_name": "longitude",
+      "long_name": "longitude",
+      "units": "degree_east",
+      "coverage_content_type": "coordinate",
+      "axis": "X",
+      "actual_range": [-71.1427, -55.8395]
+    }
+  },
+  "lat": {
+    "dimensions": ["X", "Y"],
+    "dtype": "f8",
+    "zlib": true,
+    "property": {
+      "standard_name": "latitude",
+      "long_name": "latitude",
+      "units": "degree_north",
+      "coverage_content_type": "coordinate",
+      "axis": "Y",
+      "actual_range": [45.1195, 51.9551]
+    }
+  },
+  "x": {
+      "dimensions": ["X", "Y"],
+      "dtype": "f8",
+      "property": {
+        "standard_name": "projection_x_coordinate",
+        "long_name": "projection_x_coordinate",
+        "units": "km",
+        "coverage_content_type": "coordinate",
+        "axis": "X",
+        "actual_range": [-780, 280]
+      }
+  },
+  "y": {
+    "dimensions": ["X", "Y"],
+    "dtype": "f8",
+    "property": {
+      "standard_name": "projection_y_coordinate",
+      "long_name": "projection_y_coordinate",
+      "units": "km",
+      "coverage_content_type": "coordinate",
+      "axis": "Y",
+      "actual_range": [-270, 440]
+      }
+    },
+  "depth": {
+    "dimensions": "Z",
+    "dtype": "f8",
+    "property": {
+      "standard_name": "depth",
+      "long_name": "depth",
+      "units": "m",
+      "coverage_content_type": "coordinate",
+      "positive": "down",
+      "axis": "Z",
+      "actual_range": [
+        10,
+        350
+      ]
+    }
+  },
+  "spl": {
+    "dimensions": "SPL",
+    "dtype": "f8",
+    "property": {
+      "long_name": "sound_pressure_level_in_water_threshold",
+      "units": "dB",
+      "coverage_content_type": "coordinate",
+      "axis": "SPL",
+      "actual_range": [-15, 250]
+    }
+  },
+  "quantile": {
+    "dimensions": "Q",
+    "dtype":"f8",
+    "property": {
+      "long_name": "cumulative_probability",
+      "units": "1",
+      "axis": "Q",
+      "valid_range": [0,1],
+      "actual_range": [0,1],
+      "coverage_content_type": "coordinate"
+    }
+  },
+  "time": {
+    "dimensions": "T",
+    "dtype": "f8",
+    "property": {
+      "standard_time": "time",
+      "long_name": "time",
+      "units": "days since 2000-01-01 00:00:00 UTC",
+      "coverage_content_type": "coordinate",
+      "axis": "T",
+      "calendar": "gregorian",
+      "actual_range": [4749,5113.9791666],
+      "bounds": "time_bounds",
+      "comment": "Starting dates"
+    }
+  },
+  "time_bounds": {
+    "dimensions": ["T","nv"],
+    "dtype": "f8",
+    "property": {
+      "comment":"including start date and excluding end date"
+    }
+  },
+  "freq": {
+    "dimensions": "F",
+    "dtype": "f8",
+    "property": {
+      "standard_name": "sound_frequency",
+      "long_name": "sound_frequency",
+      "units": "Hz",
+      "coverage_content_type": "coordinate",
+      "axis": "F"
+    }
+  },
+  "landmark": {
+    "dimensions": ["X","Y"],
+    "dtype": "i1",
+    "zlib": true,
+    "property": {
+      "_FillValue": -1,
+      "standard_name": "land_binary_mask",
+      "long_name": "landmask_at_sea_level",
+      "units": "1",
+      "coverag_content_type": "auxiliaryInformation",
+      "coordinates": "lon lat",
+      "grid_mapping": "proj_lambert: x y proj_latlon: lat lon",
+      "valid_range": [0,1],
+      "flag_values": [0,1],
+      "flag_meanings": "sea land",
+      "cell_methods": "area: point"
+    }
+  },
+  "watermask_3D": {
+    "dimensions": ["X","Y","Z"],
+    "dtype": "i1",
+    "zlib": true,
+    "property": {
+      "_FillValue": -1,
+      "standard_name": "sea_binary_mask",
+      "long_name": "3D_watermask_under_sea_level",
+      "units": "1",
+      "coverage_content_type": "auxiliaryInformation",
+      "coordinates": "lon lat depth",
+      "grid_mapping": "proj_lambert: x y proj_latlon: lat lon",
+      "valid_range": [0,1],
+      "flag_values": [0,1],
+      "flag_meanings": "land sea",
+      "cell_methods": "area:depth:point"
+    }
+  },
+  "proj_lambert": {
+    "dimensions": null,
+    "dtype": "f8",
+    "property": {
+      "grid_mapping_name": "lambert_conformal_conic",
+      "standard_parallel": [50,45],
+      "longitude_of_central_meridian": -59.9,
+      "latitude_of_projection_origin": 48,
+      "false_easting": 0,
+      "false_northing": 0,
+      "semi_major_axis": 6378137,
+      "inverse_flattening": 298.2572
+    }
+  },
+  "proj_latlon": {
+    "dimensions": null,
+    "dtype": "f8",
+    "property": {
+      "grid_mapping_name": "latitude_longitude",
+      "semi_major_axis": 6378137,
+      "inverse_flattening": 298.2572
+    }
+  },
+  "model_param": {
+    "dimensions": null,
+    "dtype": "f8",
+    "property": {
+      "model_name": "RAMSurf",
+      "reference_sound_speed": 1500,
+      "number_Pade_terms": 10,
+      "number_stability_constraints": 1,
+      "radius_stability_constraints": 0,
+      "comment": "Speed of sound is in m/s, radius stability constraint is in m."
+    }
+  },
+  "ramdam_param": {
+    "dimensions": null,
+    "dtype": "f8",
+    "property": {
+      "max_modeled_radius": 90,
+      "angle_between_transecs": 9,
+      "mesh_size_in_r_wavelength_factor": 0.5,
+      "mesh_size_in_z_wavelength_factor": 0.05,
+      "mesh_size_in_r_offset": 0,
+      "mesh_size_in_z_offset": 0,
+      "mesh_size_conserve_ratio_option": 1,
+      "AIS_inputs_version_date": "2019-03-04",
+      "code_version_date": "2019-03-07",
+      "Matlab_version": "2018b",
+      "comment": "Max radius is in km, transec angles are in degrees, mesh size offsets are in m, transec resolution is in m. Mesh size = wavelength * factor + offset."
+    }
+  },
+  "nb_real": {
+    "dimensions": ["T","F"],
+    "dtype": "i4",
+    "property": {
+      "_FillValue": -1,
+      "long_name": "number_of_timesteps_used_to_compute_risk_maps",
+      "units": "1",
+      "coverage_content_type": "auxillaryInformation",
+      "coordinates": "time freq",
+      "cell_methods": "time: sum(interval:30 minutes)",
+      "valid_min": 0
+    }
+  },
+  "oomr_prob":{
+    "dimensions": ["X","Y", "Z","T","F"],
+    "dtype": "f8",
+    "property": {
+      "_FillValue": null,
+      "long_name": "out_of_modeling_range_probability",
+      "units": "1",
+      "coverage_content_type": "auxillaryInformation",
+      "coordinates": "lon lat depth time freq",
+      "grid_mapping": "proj_lambert: x y proj_latlon: lat lon",
+      "valid_range": [0,1],
+      "cell_methods": "area: depth: point time: mean (interval: 30 minutes comment: over boolean test)",
+      "comment": "This variable contains the proportion of the SPL values that were not set in the timestep maps generated by the model. This happens when there is no sources nearby or in isolated bays/water surfaces"
+    }
+  }
+}

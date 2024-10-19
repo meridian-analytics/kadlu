@@ -1,0 +1,31 @@
+__pycache__
+.eggs
+.pytest_cache
+.vscode
+dist
+storage
+docs/build
+kadlu.egg-info
+.ipynb_checkpoints
+profiling/*.prof
+*.swp
+*.pyc
+.cache
+Nx2DSSFPE/mat_Mariana_Nx2D_longrng_*
+Nx2DSSFPE
+build/*
+playroom/*
+calc.prof
+modules/plot_util.rst
+config.ini
+.pymon
+
+# kadlu storage dir for pytest
+kadlu/tests/kadlu-data/
+
+# tutorial files
+docs/source/tutorials/plot_export_tutorial/figures/
+docs/source/tutorials/plot_export_tutorial/waveheight.csv
+docs/source/tutorials/plot_export_tutorial/waveheight.mat
+
+http

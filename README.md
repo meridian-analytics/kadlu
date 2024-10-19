@@ -1,16 +1,16 @@
-# Welcome to Kadlu, a Python package for modelling ocean ambient noise
+# Welcome to Kadlu, a Python package for modelling ocean acoustics
 
 Kadlu was developed for the purpose of modelling noise due to waves and rain in shallow coastal 
-waters, but contains tools useful for many other underwater sound modelling tasks. 
+waters, but contains tools useful for many other underwater acoustics modelling tasks. 
 
 Kadlu is written in Python and utilizes a number of powerful software packages 
 including [NumPy](https://numpy.org/), [HDF5](https://www.hdfgroup.org/), 
 [NetCDF-4](https://www.unidata.ucar.edu/software/netcdf/), and [SQLite](https://www.sqlite.org/index.html).
 It is licensed under the [GNU GPLv3 license](https://www.gnu.org/licenses/) 
-and hence freely available for anyone to use and modify.
-The project is hosted on GitLab at 
-[https://git-dev.cs.dal.ca/meridian/kadlu](https://git-dev.cs.dal.ca/meridian/kadlu). 
-Kadlu was developed by the [MERIDIAN](http://meridian.cs.dal.ca/) Data Analytics Team at the 
+and hence freely available for anyone to use and modify. The project is hosted on GitHub at 
+[github.com/meridian-acoustics/kadlu](https://github.com/meridian-acoustics/kadlu).
+
+Kadlu was born out of the [MERIDIAN](http://meridian.cs.dal.ca/) project (2018-2023) at the 
 [Institute for Big Data Analytics](https://bigdata.cs.dal.ca/) at Dalhousie University with the 
 support and assistance of David Barclay and Calder Robinson, both from the Department of Oceanography 
 at Dalhousie University.

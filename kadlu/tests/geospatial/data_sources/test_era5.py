@@ -1,3 +1,4 @@
+import os
 import pytest
 import kadlu
 import numpy as np
@@ -11,6 +12,9 @@ from kadlu.geospatial.data_sources.era5 import clear_cache_era5
 #  * ERA4 HRES temporal resolution is 1h
 
 # use @pytest.mark.cds_access as decorater for tests that require access to the CDS API to fetch data
+
+
+github = os.environ.get("GITHUB_ACTIONS") is not None
 
 
 # whether to automatically download data using the CDS API, if the data are not already in the local database
@@ -68,6 +72,9 @@ def test_era5_load_irradiance():
     assert np.all(np.logical_and(val >= 0, val <= 1000))
 
 
+@pytest.mark.skipif(
+    github, reason="Test requires CDS API access token which is not available on GitHub"
+)
 @pytest.mark.cds_access
 def test_era5_fetch_and_load_irradiance():
     """ Check that we can fetch and load irradiance data for the test region """

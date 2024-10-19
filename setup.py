@@ -8,12 +8,12 @@ long_description = (this_directory / "README.md").read_text()
 setup(
     name='kadlu',
     version=os.environ.get('KADLUVERSION', '2.4.1'),
-    description="MERIDIAN Python package for ocean ambient noise modelling",
+    description="Python package for ocean acoustics modelling",
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://gitlab.meridian.cs.dal.ca/public_projects/kadlu',
+    url='https://github.com/meridian-acoustics/kadlu',
     author='Oliver Kirsebom, Matthew Smith',
-    author_email='oliver.kirsebom@dal.ca, matthew.smith@dal.ca',
+    author_email='oliver.kirsebom@gmail.com',
     license='GNU General Public License v3.0',
     packages=find_packages(exclude=('tests', )),
     install_requires=[

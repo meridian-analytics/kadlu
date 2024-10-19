@@ -21,7 +21,6 @@ imageio==2.36.0
 imagesize==1.4.1
 iniconfig==2.0.0
 Jinja2==3.1.4
-kadlu @ file:///home/oliskir/src/meridian/kadlu/dist/kadlu-2.4.1.tar.gz#sha256=fb838d981bc2f22978d9c12e01b28d70c4d6a126a3a72c4ae1439f489428dbcc
 kiwisolver==1.4.7
 MarkupSafe==3.0.2
 matplotlib==3.9.2

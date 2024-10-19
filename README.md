@@ -27,7 +27,7 @@ While Kadlu comes with complete documentation and comprehensive step-by-step tut
 especially the NumPy package would be beneficial. A basic understanding of 
 the physical principles of underwater sound propagation would also be an advantage.
 
-For more information, please consult [Kadlu's Documentation Page](https://docs.meridian.cs.dal.ca/kadlu/).
+For more information, please consult [Kadlu's Documentation Page](https://meridian-acoustics.github.io/kadlu/).
 
 
 ## Installation

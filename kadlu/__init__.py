@@ -1,7 +1,6 @@
 import os
 import logging
 
-__version__ = "2.4.2"
 
 LOGLEVEL = os.environ.get('LOGLEVEL', 'INFO')
 logging.basicConfig(format='%(message)s',

@@ -79,6 +79,10 @@ x = nc.variables["utotal"][:]
 #longitude (-180,180)
 #time: units: hours since 1950-01-01
 #utotal: (time,1,lat,lon)
+
+
+#TODO: remove masked values from data array
+#  (expand dimensionality of lat,lon,time arrays to match data array, then select non-masked indices similar to era5)
 """
 
 

@@ -16,7 +16,7 @@ import os
 import sys
 import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('../../'))
-from version import __version__
+#from kadlu.__init__ import __version__
 
 
 # -- Project information -----------------------------------------------------
@@ -27,7 +27,7 @@ author = 'Matthew Smith, Oliver Kirsebom'
 
 
 # The short X.Y version
-version = __version__[:-2]
+version = "2.4" #__version__[:-2]
 
 
 # -- General configuration ---------------------------------------------------

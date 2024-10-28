@@ -16,7 +16,7 @@ import os
 import sys
 import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('../../'))
-from kadlu.__version__ import __version__
+from version import __version__
 
 
 # -- Project information -----------------------------------------------------

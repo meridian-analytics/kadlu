@@ -1,7 +1,24 @@
 """
     CMEMS = Copernicus Marine Environment Monitoring Service
 
+    https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description
+
+    GLOBAL_ANALYSISFORECAST_PHY_001_024
+
+    Global Ocean Physical Analysis and Forecasting Product
+
+    https://catalogue.marine.copernicus.eu/documents/PUM/CMEMS-GLO-PUM-001-024.pdf
+
+    Past 5 years + present year up to 10 days into future.
+    1/12 degree resolution
+    1-hour time bins.
+
     docs: https://help.marine.copernicus.eu/en/articles/8283072-copernicus-marine-toolbox-api-subset
+
+
+    Notes: there is also the Global Ocean Physics Reanalysis dataset:
+    https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description
+    with temporal coverage from 1993 up to 3 months before present.
 """
 
 import os

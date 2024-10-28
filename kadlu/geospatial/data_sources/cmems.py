@@ -37,62 +37,31 @@ from kadlu.geospatial.data_sources.data_util import (
     str_def,
 )
 import copernicusmarine 
-
-"""
-    Names of the tables that will be created in the kadlu geospatial.db database for storing ERA5.
-
-    OBS: Table names must match the variable names used by ERA5 
-"""
-era5_tables = [
-    'uv',
-]
-
-
-"""
-dataset = 'cmems_mod_glo_phy_anfc_merged-uv_PT1H-i'
-
-
-copernicusmarine.subset(
-    dataset_id=dataset,
-    variables=["utotal", "vtotal"],
-    minimum_longitude=50,
-    maximum_longitude=90,
-    minimum_latitude=0,
-    maximum_latitude=25,
-    start_datetime="2024-10-30T00:00:00",
-    end_datetime="2024-10-30T23:59:59",
-    minimum_depth=0,
-    maximum_depth=30,
-    output_filename = "test.nc",
-    output_directory = "copernicus-data",
-    service = "arco-geo-series", # arco-time-series
-    force_download = True,
-)
-
 import netCDF4
 
-nc = netCDF4.Dataset("copernicus-data/test.nc")
-
-x = nc.variables["utotal"][:]
-
-#latitude  (-90,90)
-#longitude (-180,180)
-#time: units: hours since 1950-01-01
-#utotal: (time,1,lat,lon)
-
-
-#TODO: remove masked values from data array
-#  (expand dimensionality of lat,lon,time arrays to match data array, then select non-masked indices similar to era5)
 """
+    Names of the tables that will be created in the kadlu geospatial.db database for storing CMEMS data.
+    key: kadlu name
+    value: cmems name
+"""
+cmems_tables = {
+    "water_u": "utotal", 
+    "water_v": "votal",
+}
 
 
-logging.getLogger('cdsapi').setLevel(logging.WARNING)
+CMEMS_SUBDIR = "./cmems"
+
+
+def data_path():
+    """ Returns path to directory where CMEMS NetCDF files are stored """
+    return os.path.join(storage_cfg(), CMEMS_SUBDIR)
 
 
 def initdb():
-    """ Create tables in kadlu's geospatial.db database for storing ERA5 data"""
+    """ Create tables in kadlu's geospatial.db database for storing CMEMS data"""
     conn, db = database_cfg()
-    for var in era5_tables:
+    for var in cmems_tables.keys():
         db.execute(f'CREATE TABLE IF NOT EXISTS {var}'
                    '( val     REAL    NOT NULL, '
                    '  lat     REAL    NOT NULL, '
@@ -104,23 +73,23 @@ def initdb():
     conn.close()
 
 
-def clear_cache_era5():
-    """ Removes all files with the filename pattern ERA5_*.grb2 in the Kadlu storage directory"""
+def clear_cache_cmems():
+    """ Removes all NetCDF files in the subdirectory `cmems` within the Kadlu storage directory"""
     logger = logging.getLogger("kadlu")
 
     # path to folder where Kadlu stores data
-    dir_path = storage_cfg()
+    dir_path = data_path()
 
     if not os.path.exists(dir_path):
-        warn_msg = f"Failed to clear ERA5 cache. Kadlu data storage directory not found at {dir_path}."
+        warn_msg = f"Failed to clear CMEMS cache. Kadlu data storage directory not found at {dir_path}."
         logger.warning(warn_msg)
         return
     
     # find all ERA5 grib files
-    paths = glob(os.path.join(dir_path, "ERA5_*.grb2"))    
+    paths = glob(os.path.join(dir_path, "*.nc"))    
 
     if len(paths) == 0:
-        info_msg = f"ERA5 cache is empty."
+        info_msg = f"CMEMS cache is empty."
         logger.info(info_msg)
         return
 
@@ -130,18 +99,17 @@ def clear_cache_era5():
         bytes += os.path.getsize(path)
         os.remove(path)
 
-    info_msg = f"Emptied ERA5 cache (deleted {len(paths)} files, {bytes/1E6:.1f} MB)"
+    info_msg = f"Emptied CMEMS cache (deleted {len(paths)} files, {bytes/1E6:.1f} MB)"
     logger.info(info_msg)
 
 
-def fetch_era5(var, *, west, east, south, north, start, **_):
-    """ Fetch global ERA5 data for specified variable, geographic region, and time range.
+def fetch_cmems(var, *, west, east, south, north, start, **_):
+    """ Fetch global CMEMS data for specified variable, geographic region, and time range.
 
         Downloads 24-hours of global data on the specified day, and saves these data to 
-        a *.grb2 file in the kadlu data storage directory, using the recommended spatial 
-        resolution of 0.25 x 0.25 degrees.
+        a *.nc file in the kadlu data storage directory.
 
-        The *.grb2 file can be deleted manually by calling the `clear_cache_era5` function 
+        The *.nc file can be deleted manually by calling the `clear_cache_cmems` function 
         to save disk space, if necessary.
 
         Only data within the specified geographic boundaries (`west`, `east`, `south`, `north`) 
@@ -149,9 +117,7 @@ def fetch_era5(var, *, west, east, south, north, start, **_):
 
         args:
             var: string
-                The variable short name of desired wave parameter according to ERA5 docs. 
-                The complete list can be found here (table 7 for wave params):
-                https://confluence.ecmwf.int/display/CKB/ERA5+data+documentation#ERA5datadocumentation-Temporalfrequency
+                The variable short name of desired wave parameter according to CMEMS docs. 
             west,east,south,north: float
                 Geographic boundaries of the data request
             start: datetime.datetime
@@ -162,42 +128,71 @@ def fetch_era5(var, *, west, east, south, north, start, **_):
     """
     logger = logging.getLogger("kadlu")
 
-    # attempt connecting to the CDS API
-    try:
-        client = cdsapi.Client()
-    except Exception:
-        # if attempt fails, raise an error
-        raise KeyError('You must obtain a CDS API access token from https://cds-beta.climate.copernicus.eu/how-to-api to download ERA5 data')
+    # variable mapping
+    if var in cmems_tables:
+        var_name = cmems_tables[var]
+    
+    else:
+        err_msg = f"Invalid variable `{var}` for data source CMEMS; valid options are: {list(cmems_tables.keys())}"
+        raise ValueError(err_msg)
+
+    # time window
+    start = datetime(start.year, start.month, start.day)
+    end = start + timedelta(days=1)
+
+    # filename
+    fname = f"{var_name}_{east}E{west}W{south}S{north}N_{start.strftime("%Y%m%d")}.nc"
+
+    # full path
+    target = os.path.join(data_path(), fname)
+
+    if isfile(target):
+        return
+
+
+    logger.info(f'fetching {target}...')
 
     # form request
-    # note: we use the recommended spatial resolution of 0.25 x 0.25 degrees
-    # https://confluence.ecmwf.int/display/CKB/ERA5%3A+What+is+the+spatial+reference
+    request = dict(
+        dataset = 'cmems_mod_glo_phy_anfc_merged-uv_PT1H-i',
+        variables = [var_name],
+        minimum_longitude=east,
+        maximum_longitude=west,
+        minimum_latitude=south,
+        maximum_latitude=north,
+        start_datetime=start,
+        end_datetime=end,
+        minimum_depth=0,
+        maximum_depth=1,
+        output_filename = fname,
+        output_directory = data_path(),
+        service = "arco-geo-series",
+        force_download = True,
+    )
 
-    t = datetime(start.year, start.month, start.day)
-    times = [datetime(t.year, t.month, t.day, h).strftime('%H:00') for h in range(24)]
+    # submit request
+    copernicusmarine.subset(**request)
 
-    request = {
-        'product_type': 'reanalysis',
-        'format': 'grib',
-        'variable': var,
-        'year': t.strftime("%Y"),
-        'month': t.strftime("%m"),
-        'day': t.strftime("%d"),
-        'time': times,
-        'grid': [0.25, 0.25], 
-        'data_format': 'grib',
-    }
+    # open downloaded file
+    assert isfile(target)
+    nc = netCDF4.Dataset(target)
 
-    # download the data and save as *.grb2 file
-    dataset = 'reanalysis-era5-single-levels'
-    target = f'ERA5_reanalysis_{var}_{t.strftime("%Y-%m-%d")}.grb2'
-    target = f'{storage_cfg()}{target}'
-    if not isfile(target):
-        logger.info(f'fetching {target}...')
-        client.retrieve(dataset, request, target)
+    # load data into memory (as masked Numpy arrays)
+    values = nc.variables[var_name][:,:,:,:]
+
+    # SQL table name
+    table = var
+
+    #latitude  (-90,90)
+    #longitude (-180,180)
+    #time: units: hours since 1950-01-01
+    #utotal: (time,1,lat,lon)
+
+
+    #TODO: remove masked values from data array
+    #  (expand dimensionality of lat,lon,time arrays to match data array, then select non-masked indices similar to era5)
 
     # load the data from the *.grb2 file and insert it into the database
-    assert isfile(target)
     grb = pygrib.open(target)
     data = np.array([[], [], [], [], []])
     table = var[4:] if var[0:4] == '10m_' else var
@@ -270,16 +265,16 @@ def fetch_era5(var, *, west, east, south, north, start, **_):
         west = west,
         north = north,
         east = east,
-        start = t,
-        end = t + timedelta(hours=24)     
+        start = start,
+        end = end     
     )
     logmsg('era5', var, (n1, n2), **kwargs)
     
     return True
 
 
-def load_era5(var, *, west, east, south, north, start, end, fetch=True, **_):
-    """ Load ERA5 data from local geospatial.db database
+def load_cmems(var, *, west, east, south, north, start, end, fetch=True, **_):
+    """ Load CMEMS data from local geospatial.db database
 
         Args:
             var: str
@@ -307,7 +302,7 @@ def load_era5(var, *, west, east, south, north, start, end, fetch=True, **_):
     """
     if fetch:
         # Check local database for data.
-        # Fetch data from CDS API, if missing.
+        # Fetch data from Copernicus API, if missing.
         with index(storagedir=storage_cfg(),
                 west=west,
                 east=east,
@@ -315,13 +310,13 @@ def load_era5(var, *, west, east, south, north, start, end, fetch=True, **_):
                 north=north,
                 start=start,
                 end=end) as fetchmap:
-            fetchmap(callback=fetch_era5, var=var)
+            fetchmap(callback=fetch_cmems, var=var)
 
     # connect to local database
     conn, db = database_cfg()
 
     # table name in local database
-    table = var[4:] if var[0:4] == '10m_' else var  # table name can't start with int
+    table = var
 
     # check if the table exists
     rows = db.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'").fetchall()
@@ -346,7 +341,7 @@ def load_era5(var, *, west, east, south, north, start, end, fetch=True, **_):
     # if no data was found, return empty arrays and log info
     if len(rowdata) == 0:
         logmsg_nodata(
-            'era5', var,
+            'cmems', var,
             west=west, east=east, south=south, north=north,
             start=start, end=end
         )
@@ -356,123 +351,23 @@ def load_era5(var, *, west, east, south, north, start, end, fetch=True, **_):
     return np.array((val, lat, lon, epoch), dtype=float)
 
 
-class Era5():
+class Cmems():
     """ Collection of module functions for fetching and loading.
     
         The functions return (values, lat, lon, epoch) numpy arrays with 
         shape (num_points, 4) where epoch is the number of hours since 2000-01-01.
     """
 
-    def load_windwaveswellheight(self, **kwargs):
-        return load_era5('significant_height_of_combined_wind_waves_and_swell',
-                         **kwargs)
+    def load_water_u(self, **kwargs):
+        return load_cmems('water_u', **kwargs)
 
-    def load_wavedirection(self, **kwargs):
-        return load_era5('mean_wave_direction', **kwargs)
-
-    def load_waveperiod(self, **kwargs):
-        return load_era5('mean_wave_period', **kwargs)
-
-    def load_precipitation(self, **kwargs):
-        return load_era5('convective_precipitation', **kwargs)
-
-    def load_snowfall(self, **kwargs):
-        return load_era5('convective_snowfall', **kwargs)
-
-    def load_flux_ocean(self, **kwargs):
-        return load_era5('normalized_energy_flux_into_ocean', **kwargs)
-
-    def load_flux_waves(self, **kwargs):
-        return load_era5('normalized_energy_flux_into_waves', **kwargs)
-
-    def load_stress_ocean(self, **kwargs):
-        return load_era5('normalized_stress_into_ocean', **kwargs)
-
-    def load_precip_type(self, **kwargs):
-        return load_era5('precipitation_type', **kwargs)
-
-    def load_wind_u(self, **kwargs):
-        return load_era5('10m_u_component_of_wind', **kwargs)
-
-    def load_wind_v(self, **kwargs):
-        return load_era5('10m_v_component_of_wind', **kwargs)
-    
-    def load_insolation(self, **kwargs):
-        data = load_era5('surface_solar_radiation_downwards', **kwargs)
-        # for accumulated quantities, we subtract 1/2 hour to get the time at the center of the forecast bin
-        data[3] -= 0.5
-        return data
-
-    def load_irradiance(self, **kwargs):
-        data = self.load_insolation(**kwargs)
-        data[0] /= 3600
-        return data
-
-    def load_wind_uv(self, fetch=True, **kwargs):
-        """ Loads wind speed computed as sqrt(wind_u^2 + wind_v^2)"""
-        # Check local database for data.
-        # Fetch data from CDS API, if missing.
-        if fetch:
-            with index(storagedir=storage_cfg(),
-                    west=kwargs['west'],
-                    east=kwargs['east'],
-                    south=kwargs['south'],
-                    north=kwargs['north'],
-                    start=kwargs['start'],
-                    end=kwargs['end']) as fetchmap:
-                fetchmap(callback=fetch_era5, var='10m_u_component_of_wind')
-                fetchmap(callback=fetch_era5, var='10m_v_component_of_wind')
-
-        # establish connection to the geospatial.db database
-        conn, db = database_cfg()
-        
-        # check if the tabls exist
-        query = "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('u_component_of_wind','v_component_of_wind')"
-        rows = db.execute(query).fetchall()
-        tables_exist = len(rows) >= 2
-
-        if not tables_exist:
-            return np.array(([], [], [], [])).astype(float)
-
-        # form SQL query
-        sql = ' AND '.join(['SELECT u_component_of_wind.val, u_component_of_wind.lat, u_component_of_wind.lon, u_component_of_wind.time, v_component_of_wind.val FROM u_component_of_wind '\
-                'INNER JOIN v_component_of_wind '\
-                'ON u_component_of_wind.lat == v_component_of_wind.lat',
-                            'u_component_of_wind.lon == v_component_of_wind.lon',
-                            'u_component_of_wind.time == v_component_of_wind.time '\
-                                    'WHERE u_component_of_wind.lat >= ?',
-                            'u_component_of_wind.lat <= ?',
-                            'u_component_of_wind.lon >= ?',
-                            'u_component_of_wind.lon <= ?',
-                            'u_component_of_wind.time >= ?',
-                            'u_component_of_wind.time <= ?']) + ' ORDER BY u_component_of_wind.time, u_component_of_wind.lat, u_component_of_wind.lon ASC'
-        
-        # perform the query
-        db.execute(
-            sql,
-            tuple(
-                map(str, [
-                    kwargs['south'], kwargs['north'], kwargs['west'],
-                    kwargs['east'],
-                    dt_2_epoch(kwargs['start']),
-                    dt_2_epoch(kwargs['end'])
-                ])))
-
-        wind_u, lat, lon, epoch, wind_v = np.array(db.fetchall()).T
-
-        # compute speed
-        val = np.sqrt(np.square(wind_u) + np.square(wind_v))
-
-        conn.close()
-
-        return np.array((val, lat, lon, epoch)).astype(float)
+    def load_water_v(self, **kwargs):
+        return load_cmems('water_v', **kwargs)
 
     def __str__(self):
         info = '\n'.join([
-            "Era5 Global Dataset from Copernicus Climate Datastore.",
-            "Combines model data with observations from across",
-            "the world into a globally complete and consistent dataset",
-            "\thttps://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels"
+            "Copernicus Marine Environment Monitoring Service (CMEMS)",
+            "\thttps://data.marine.copernicus.eu/products",
         ])
         args = "(south, north, west, east, start, end)"
         return str_def(self, info, args)

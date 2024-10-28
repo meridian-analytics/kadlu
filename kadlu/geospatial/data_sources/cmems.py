@@ -27,6 +27,7 @@ from os.path import isfile
 from glob import glob
 from datetime import datetime, timedelta
 import numpy as np
+import numpy.ma as ma
 from kadlu import index
 from kadlu.geospatial.data_sources.data_util import (
     database_cfg,
@@ -46,7 +47,7 @@ import netCDF4
 """
 cmems_tables = {
     "water_u": "utotal", 
-    "water_v": "votal",
+    "water_v": "vtotal",
 }
 
 
@@ -141,7 +142,7 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
     end = start + timedelta(days=1)
 
     # filename
-    fname = f"{var_name}_{east}E{west}W{south}S{north}N_{start.strftime("%Y%m%d")}.nc"
+    fname = f"{var_name}_{east}E{west}W{south}S{north}N_{start.strftime('%Y%m%d')}.nc"
 
     # full path
     target = os.path.join(data_path(), fname)
@@ -154,16 +155,16 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
 
     # form request
     request = dict(
-        dataset = 'cmems_mod_glo_phy_anfc_merged-uv_PT1H-i',
+        dataset_id = 'cmems_mod_glo_phy_anfc_merged-uv_PT1H-i',
         variables = [var_name],
-        minimum_longitude=east,
-        maximum_longitude=west,
-        minimum_latitude=south,
-        maximum_latitude=north,
-        start_datetime=start,
-        end_datetime=end,
-        minimum_depth=0,
-        maximum_depth=1,
+        minimum_longitude = west,
+        maximum_longitude = east,
+        minimum_latitude = south,
+        maximum_latitude = north,
+        start_datetime = start,
+        end_datetime = end,
+        minimum_depth = 0,
+        maximum_depth = 1,
         output_filename = fname,
         output_directory = data_path(),
         service = "arco-geo-series",
@@ -178,74 +179,55 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
     nc = netCDF4.Dataset(target)
 
     # load data into memory (as masked Numpy arrays)
-    values = nc.variables[var_name][:,:,:,:]
+    vals = nc.variables[var_name][:,0,:,:]  #(time,depth,lat,lon)
+    lats = nc.variables["latitude"][:]  #degrees
+    lons = nc.variables["longitude"][:]  #degrees, -180 to +180
+    times = nc.variables["time"][:]  #hours since 1950-01-01
+
+    # expand dimesionality
+    def expand(a, shape, axis):
+        """ Helper function for expanding dimensionality of array """
+        dims = list(shape)
+        del dims[axis]
+        for dim in dims:
+            new_shape = a.shape + (dim,)
+            a = np.expand_dims(a, axis=-1)  #adds new dimension of shape (1,)
+            a = np.broadcast_to(a, new_shape)   #expands the new dimension to the desired size (by replicating the array)
+
+        a = np.moveaxis(a, [0], [axis]) #moves the original dimension to the desired position
+        return a
+
+    times = expand(times, vals.shape, 0)
+    lats = expand(lats, vals.shape, 1)
+    lons = expand(lons, vals.shape, 2)
+
+    # remove masked values
+    idx = ma.getmask(vals)
+    vals = vals[~idx]
+    times = times[~idx]
+    lats = lats[~idx]
+    lons = lons[~idx]
+
+    vals = vals.flatten()
+    times = times.flatten()
+    lats = lats.flatten()
+    lons = lons.flatten()
+
+    # collect data in a list (values, lats, lons, times, source)
+    # OBS: the `time` column in the SQL database has type INT so 
+    #   we cannot store half-integer hours. therefore we subtract 
+    #   30 minutes at load-time instead to center data within bin
+    dt0 = datetime(year=1950,month=1,day=1)
+    data = np.array([
+        vals, 
+        lats, 
+        lons, 
+        dt_2_epoch([dt0 + timedelta(hours=float(t)) for t in times]),  
+        ['cmems' for _ in vals],
+    ])
 
     # SQL table name
     table = var
-
-    #latitude  (-90,90)
-    #longitude (-180,180)
-    #time: units: hours since 1950-01-01
-    #utotal: (time,1,lat,lon)
-
-
-    #TODO: remove masked values from data array
-    #  (expand dimensionality of lat,lon,time arrays to match data array, then select non-masked indices similar to era5)
-
-    # load the data from the *.grb2 file and insert it into the database
-    grb = pygrib.open(target)
-    data = np.array([[], [], [], [], []])
-    table = var[4:] if var[0:4] == '10m_' else var
-
-    # process data 'messages' 
-    for msg in grb:
-        # timestamp
-        dt = msg.validDate
-
-        # for forecasts, 'validDate' represents the start time of the forecast (06:00 UTC or 18:00 UTC)
-        # so we must add the appropriate number of hourly steps
-        # https://confluence.ecmwf.int/pages/viewpage.action?pageId=85402030
-        #  
-        # for accumulated quantities we should subtracting 1/2 hour to get the time at the center of the 
-        # forecast bin; however, since our database stores times as INTs (hours since 2000-01-01), we 
-        # instead subtract 1/2 hour when the data is loaded from the database
-        
-        step = msg.step
-        ###if msg.stepType == "accum":
-        ###    step -= 0.5
-
-        dt += timedelta(seconds = step * 3600)
-
-        debug_msg = f"[ERA5] Processing message with timestamp {dt} (step={step}) ..."
-        logger.debug(debug_msg)
-
-        # read grib data (value, lat, lon)
-        z, y, x = msg.data()
-        if np.ma.is_masked(z):
-            z2 = z[~z.mask].data
-            y2 = y[~z.mask]
-            x2 = x[~z.mask]
-        else:  # wind data has no mask
-            z2 = z.reshape(-1)
-            y2 = y.reshape(-1)
-            x2 = x.reshape(-1)
-
-        # ERA5 uses longitude values in the range [0;360] referenced to the Greenwich Prime Meridian
-        # convert to longitude to [-180;180]
-        x3 = ((x2 + 180) % 360) - 180
-
-        # index coordinates, select query range subset
-        xix = np.logical_and(x3 >= west, x3 <= east)
-        yix = np.logical_and(y2 >= south, y2 <= north)
-        idx = np.logical_and(xix, yix)
-
-        # collect data in a list (values, lats, lons, times, source)
-        msg_data = [
-            z2[idx], y2[idx], x3[idx], dt_2_epoch([dt for i in z2[idx]]), ['era5' for i in z2[idx]]
-        ]
-
-        # aggregate data
-        data = np.hstack((data, msg_data))
 
     # perform the insertion into the database
     initdb()
@@ -268,7 +250,7 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
         start = start,
         end = end     
     )
-    logmsg('era5', var, (n1, n2), **kwargs)
+    logmsg('cmems', var, (n1, n2), **kwargs)
     
     return True
 
@@ -348,7 +330,14 @@ def load_cmems(var, *, west, east, south, north, start, end, fetch=True, **_):
         return np.array([[], [], [], []])
 
     val, lat, lon, epoch, source = rowdata
-    return np.array((val, lat, lon, epoch), dtype=float)
+    data = np.array((val, lat, lon, epoch), dtype=float)
+
+    # OBS: the `time` column in the SQL database has type INT so 
+    #   we cannot store half-integer hours. therefore we subtract 
+    #   30 minutes at load-time instead to center data within bin
+    data[-1] -= 0.5
+
+    return data
 
 
 class Cmems():

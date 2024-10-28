@@ -3,7 +3,6 @@ import pytest
 import kadlu
 import numpy as np
 from datetime import datetime, timedelta
-from kadlu.geospatial.data_sources.data_util import reshape_4D
 from kadlu.geospatial.data_sources.era5 import clear_cache_era5
 
 # notes:

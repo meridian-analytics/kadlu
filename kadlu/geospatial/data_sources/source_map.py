@@ -10,12 +10,15 @@ import kadlu.geospatial.data_sources.era5 as era5
 import kadlu.geospatial.data_sources.gebco as gebco
 import kadlu.geospatial.data_sources.hycom as hycom
 import kadlu.geospatial.data_sources.wwiii as wwiii
+import kadlu.geospatial.data_sources.cmems as cmems
 #import kadlu.geospatial.data_sources.nemo as nemo
 
 # dict for mapping strings to callback functions
 load_map = dict(
     #        bathy_chs           = chs  .Chs()  .load_bathymetry,
     #temp_hycom          = hycom.Hycom().load_temp,
+    water_u_cmems=cmems.Cmems().load_water_u,
+    water_v_cmems=cmems.Cmems().load_water_v,
     temperature_hycom=hycom.Hycom().load_temp,
     salinity_hycom=hycom.Hycom().load_salinity,
     water_uv_hycom=hycom.Hycom().load_water_uv,
@@ -99,6 +102,9 @@ var3d = (
 source_map = ("""
     CHS   (Canadian Hydrography Service)
           bathymetry:       bathymetric data in Canada's waterways. metres, variable resolution \n
+    CMEMS (Copernicus Marine Environment Monitoring Service)
+          water_u:          ocean surface velocity U-component, m/s
+          water_v:          ocean surface velocity V-component, m/s \n
     ERA5  (Global environmental dataset from Copernicus Climate Data Store)
           wavedir:          mean wave direction, degrees
           waveheight:       combined height of wind, waves, and swell. metres

@@ -16,6 +16,7 @@ import os
 import sys
 import sphinx_rtd_theme
 sys.path.insert(0, os.path.abspath('../../'))
+from kadlu.__init__ import __version__
 
 
 # -- Project information -----------------------------------------------------
@@ -24,12 +25,9 @@ project = 'kadlu'
 copyright = '2020 MERIDIAN'
 author = 'Matthew Smith, Oliver Kirsebom'
 
-# The short X.Y version
-#version = '2.3'
-# The full version, including alpha/beta/rc tags
-#release = '2.3.6'
 
-version = os.environ.get('KADLUVERSION', '0.0.0').rsplit('.', 1)[0]
+# The short X.Y version
+version = __version__[:-2]
 
 
 # -- General configuration ---------------------------------------------------

@@ -12,7 +12,7 @@ setup(
     description="Python package for ocean acoustics modelling",
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/meridian-acoustics/kadlu',
+    url='https://github.com/meridian-analytics/kadlu',
     author='Oliver Kirsebom, Matthew Smith',
     author_email='oliver.kirsebom@gmail.com',
     license='GNU General Public License v3.0',

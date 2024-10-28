@@ -29,7 +29,7 @@ jobs:
     # run tests and obtain coverage
       - name: Run test and obtain coverage
         run: |
-          coverage run -m pytest -m "not cds_access and not hycom_access"
+          coverage run -m pytest -m "not cds_access and not hycom_access and not cmems_access"
           coverage report -i
           coverage xml -i
 

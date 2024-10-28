@@ -1,24 +1,16 @@
 """
-    CMEMS = Copernicus Marine Environment Monitoring Service
+    API for Copernicus Marine Environment Monitoring Service (CMEMS) Global Ocean Physical datasets.
 
-    https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description
+    https://data.marine.copernicus.eu/products
 
-    GLOBAL_ANALYSISFORECAST_PHY_001_024
+    Currently, implements functions for fetching data from the following datasets,
 
-    Global Ocean Physical Analysis and Forecasting Product
-
-    https://catalogue.marine.copernicus.eu/documents/PUM/CMEMS-GLO-PUM-001-024.pdf
-
-    Past 5 years + present year up to 10 days into future.
-    1/12 degree resolution
-    1-hour time bins.
-
-    docs: https://help.marine.copernicus.eu/en/articles/8283072-copernicus-marine-toolbox-api-subset
-
-
-    Notes: there is also the Global Ocean Physics Reanalysis dataset:
-    https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/description
-    with temporal coverage from 1993 up to 3 months before present.
+        *   Global Ocean Physical Analysis and Forecasting Product
+            GLOBAL_ANALYSISFORECAST_PHY_001_024
+            https://data.marine.copernicus.eu/product/GLOBAL_ANALYSISFORECAST_PHY_001_024/description
+            Temporal coverage: Past 5 years + present year up to 10 days into future.
+            Spatial resolution: 1/12 degrees
+            Temporal resolution: 1 hour
 """
 
 import os
@@ -42,21 +34,26 @@ import netCDF4
 
 """
     Names of the tables that will be created in the kadlu geospatial.db database for storing CMEMS data.
-    key: kadlu name
-    value: cmems name
 """
-cmems_tables = {
+cmems_tables = {  #kadlu name: CMEMS name
     "water_u": "utotal", 
     "water_v": "vtotal",
 }
 
 
+# subdirectory where downloaded NetCDF files will be stored
 CMEMS_SUBDIR = "./cmems"
 
 
 def data_path():
     """ Returns path to directory where CMEMS NetCDF files are stored """
     return os.path.join(storage_cfg(), CMEMS_SUBDIR)
+
+
+def filename(var, east, west, south, north, start):
+    """ Generates standardized filename for the downloaded NetCDF file """
+    fname = f"{var}_{east}E{west}W{south}S{north}N_{start.strftime('%Y%m%d')}.nc"
+    return fname
 
 
 def initdb():
@@ -131,7 +128,7 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
 
     # variable mapping
     if var in cmems_tables:
-        var_name = cmems_tables[var]
+        var_cmems = cmems_tables[var]
     
     else:
         err_msg = f"Invalid variable `{var}` for data source CMEMS; valid options are: {list(cmems_tables.keys())}"
@@ -142,7 +139,7 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
     end = start + timedelta(days=1)
 
     # filename
-    fname = f"{var_name}_{east}E{west}W{south}S{north}N_{start.strftime('%Y%m%d')}.nc"
+    fname = filename(var_cmems, east, west, south, north, start)
 
     # full path
     target = os.path.join(data_path(), fname)
@@ -150,13 +147,12 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
     if isfile(target):
         return
 
-
     logger.info(f'fetching {target}...')
 
     # form request
     request = dict(
         dataset_id = 'cmems_mod_glo_phy_anfc_merged-uv_PT1H-i',
-        variables = [var_name],
+        variables = [var_cmems],
         minimum_longitude = west,
         maximum_longitude = east,
         minimum_latitude = south,
@@ -179,7 +175,7 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
     nc = netCDF4.Dataset(target)
 
     # load data into memory (as masked Numpy arrays)
-    vals = nc.variables[var_name][:,0,:,:]  #(time,depth,lat,lon)
+    vals = nc.variables[var_cmems][:,0,:,:]  #(time,depth,lat,lon)
     lats = nc.variables["latitude"][:]  #degrees
     lons = nc.variables["longitude"][:]  #degrees, -180 to +180
     times = nc.variables["time"][:]  #hours since 1950-01-01

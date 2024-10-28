@@ -56,7 +56,12 @@ import netCDF4
 
 nc = netCDF4.Dataset("copernicus-data/test.nc")
 
-x = nc.variables["uo"][0,0,:,:]
+x = nc.variables["utotal"][:]
+
+#latitude  (-90,90)
+#longitude (-180,180)
+#time: units: hours since 1950-01-01
+#utotal: (time,1,lat,lon)
 """
 
 

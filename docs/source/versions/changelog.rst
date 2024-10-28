@@ -1,6 +1,10 @@
 Change log
 ==========
 
+**Version 2.4.2** (Oct 28, 2024)
+
+ * New CMEMS module for fetching data from Copernicus marine repository
+
 **Version 2.4.1** (Sep 26, 2024)
 
  * Updated ERA5 module to new CDS API

@@ -8,6 +8,7 @@ cffi==1.17.1
 cftime==1.6.4
 charset-normalizer==3.4.0
 contourpy==1.3.0
+copernicusmarine==1.3.4
 cycler==0.12.1
 docutils==0.21.2
 eccodes==2.38.3
@@ -27,7 +28,7 @@ matplotlib==3.9.2
 mpl-scatter-density==0.7
 multiurl==0.3.1
 netCDF4==1.7.1.post2
-numpy==2.1.2
+numpy==1.26.4
 packaging==24.1
 pandas==2.2.3
 pillow==11.0.0

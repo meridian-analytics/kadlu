@@ -1,13 +1,14 @@
 import os
 from pathlib import Path
 from setuptools import setup, find_packages
+#from kadlu.__init__ import __version__
 
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='kadlu',
-    version=os.environ.get('KADLUVERSION', '2.4.1'),
+    version="2.4.2",  #__version__
     description="Python package for ocean acoustics modelling",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -25,7 +26,7 @@ setup(
         'matplotlib',
         'mpl_scatter_density',
         'netcdf4',
-        'numpy',
+        'numpy<2.0.0',
         'pygrib',  # DEPENDS ON eccodes binaries
         'pyproj',
         #'pyqt5',
@@ -33,6 +34,7 @@ setup(
         'scipy',
         'tqdm',
         'xarray',
+        'copernicusmarine',  #requires numpy<2.0.0
     ],
     #setup_requires=[ 'pytest-runner', ],
     #tests_require=['pytest', 'pytest-parallel'],

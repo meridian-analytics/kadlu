@@ -28,7 +28,7 @@ matplotlib==3.9.2
 mpl-scatter-density==0.7
 multiurl==0.3.1
 netCDF4==1.7.1.post2
-numpy==2.1.2
+numpy==1.26.4
 packaging==24.1
 pandas==2.2.3
 pillow==11.0.0

@@ -26,7 +26,7 @@ setup(
         'matplotlib',
         'mpl_scatter_density',
         'netcdf4',
-        'numpy',
+        'numpy<2.0.0',
         'pygrib',  # DEPENDS ON eccodes binaries
         'pyproj',
         #'pyqt5',
@@ -34,7 +34,7 @@ setup(
         'scipy',
         'tqdm',
         'xarray',
-        'copernicusmarine',
+        'copernicusmarine',  #requires numpy<2.0.0
     ],
     #setup_requires=[ 'pytest-runner', ],
     #tests_require=['pytest', 'pytest-parallel'],

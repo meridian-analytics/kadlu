@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='kadlu',
-    version="2.4.2",  #__version__
+    version="2.4.3",  #__version__
     description="Python package for ocean acoustics modelling",
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -35,6 +35,7 @@ setup(
         'tqdm',
         'xarray',
         'copernicusmarine',  #requires numpy<2.0.0
+        'getgfs',
     ],
     #setup_requires=[ 'pytest-runner', ],
     #tests_require=['pytest', 'pytest-parallel'],

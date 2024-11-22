@@ -1,6 +1,10 @@
 Change log
 ==========
 
+**Version 2.4.3** (Nov 22, 2024)
+
+ * New GFS module for fetching wind and solar data from NOAA GFS forecast
+
 **Version 2.4.2** (Oct 28, 2024)
 
  * New CMEMS module for fetching data from Copernicus marine repository

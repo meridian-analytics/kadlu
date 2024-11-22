@@ -35,6 +35,7 @@ setup(
         'tqdm',
         'xarray',
         'copernicusmarine',  #requires numpy<2.0.0
+        'getgfs',
     ],
     #setup_requires=[ 'pytest-runner', ],
     #tests_require=['pytest', 'pytest-parallel'],

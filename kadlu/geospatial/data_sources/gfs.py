@@ -117,11 +117,6 @@ def fetch_gfs(var, *, west, east, south, north, start, **_):
     last_lon = first_lon + 0.25 * (vals.shape[2] - 1)
     lons = np.linspace(first_lon, last_lon, num=vals.shape[2])
 
-    print()
-    print(lats)
-    print(lons)
-    print(times)
-
     # flatten
     times, lats, lons = np.meshgrid(times, lats, lons, indexing="ij")
     times = times.flatten()

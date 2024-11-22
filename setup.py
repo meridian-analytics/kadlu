@@ -8,7 +8,7 @@ long_description = (this_directory / "README.md").read_text()
 
 setup(
     name='kadlu',
-    version="2.4.2",  #__version__
+    version="2.4.3",  #__version__
     description="Python package for ocean acoustics modelling",
     long_description=long_description,
     long_description_content_type='text/markdown',

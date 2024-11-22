@@ -19,6 +19,7 @@ calc.prof
 modules/plot_util.rst
 config.ini
 .pymon
+.coverage
 
 # kadlu storage dir for pytest
 kadlu/tests/kadlu-data/

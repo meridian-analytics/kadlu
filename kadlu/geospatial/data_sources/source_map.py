@@ -11,12 +11,16 @@ import kadlu.geospatial.data_sources.gebco as gebco
 import kadlu.geospatial.data_sources.hycom as hycom
 import kadlu.geospatial.data_sources.wwiii as wwiii
 import kadlu.geospatial.data_sources.cmems as cmems
+import kadlu.geospatial.data_sources.gfs as gfs
 #import kadlu.geospatial.data_sources.nemo as nemo
 
 # dict for mapping strings to callback functions
 load_map = dict(
     #        bathy_chs           = chs  .Chs()  .load_bathymetry,
     #temp_hycom          = hycom.Hycom().load_temp,
+    wind_u_gfs=gfs.Gfs().load_wind_u,
+    wind_v_gfs=gfs.Gfs().load_wind_v,
+    irradiance_gfs=gfs.Gfs().load_irradiance,
     water_u_cmems=cmems.Cmems().load_water_u,
     water_v_cmems=cmems.Cmems().load_water_v,
     temperature_hycom=hycom.Hycom().load_temp,

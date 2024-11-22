@@ -16,6 +16,7 @@ exceptiongroup==1.2.2
 fast-histogram==0.14
 findlibs==0.0.5
 fonttools==4.54.1
+getgfs==1.2.0
 gsw==3.6.19
 idna==3.10
 imageio==2.36.0

@@ -49,7 +49,7 @@ Kadlu runs on the most recent stable version of Python 3.
 ## Configuration
 
 
-#### Optionally set the storage directory
+### Optionally set the storage directory
 
 Kadlu allows configuration for where data is stored on your machine. By default, a folder 'kadlu_data' will be created in the home directory. To specify a custom location, run the following:
 
@@ -59,8 +59,9 @@ kadlu.storage_cfg(setdir='/specify/desired/path/here/')
 ```
 
 
-#### Optionally add an API token for fetching ERA5 data
+### Optionally add API tokens for fetching ERA5 and CMEMS data
 
+#### ERA5
 Kadlu uses ECMWF's ERA5 dataset as one its main sources of environmental data, e.g., for wind, waves and solar irradiance. 
 You will need to obtain your own access token to download these data. 
 This can be done by registering an account with ECMWF and the Copernicus [Climate Data Store (CDS)](https://cds-beta.climate.copernicus.eu/). 
@@ -68,6 +69,11 @@ Once logged in, your access token, comprised of an URL address and a secret key,
 the [Copernicus webpage](https://cds-beta.climate.copernicus.eu/how-to-api). 
 Following the instructions, copy the URL and the key to the file `$HOME/.cdsapirc`. 
 Finally, you will need to [accept the ERA5 terms of use](https://cds-beta.climate.copernicus.eu/datasets/reanalysis-era5-single-levels) to activate the token.
+
+#### CMEMS
+Run `copernicusmarine login`. This will prompt you for login credentials and 
+save them to `$HOME/.copernicusmarine/.copernicusmarine-credentials`.
+
 
 
 ## Jupyter notebook tutorials

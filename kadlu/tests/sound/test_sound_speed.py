@@ -26,7 +26,7 @@ def test_sound_speed_from_uniform_ssp():
     # instance of sound speed class
     ss = SoundSpeed(ssp=1499, num_depths=50, rel_err=None)
     # evaluate
-    c = ss(x=0, y=0, depth=0)
+    c = ss.interp_xy(x=0, y=0, z=0)
     assert c == 1499
 
 
@@ -37,5 +37,5 @@ def test_sound_speed_from_ssp():
     # instance of sound speed class
     ss = SoundSpeed(ssp=(c0, z0), num_depths=50, rel_err=None)
     # evaluate
-    c = ss(x=0, y=0, depth=z0, grid=True)
+    c = ss.interp_xy(x=0, y=0, z=z0, grid=True)
     assert np.all(np.abs(c - c0) < 1E-6)

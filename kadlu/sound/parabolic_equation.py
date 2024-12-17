@@ -747,7 +747,7 @@ class TransmissionLoss():
                 return self._sound_speed(x=x0, y=y0, z=z, grid=True)
         else:
             ssp_z = None
-
+        
         fig = plot_transm_loss_vert(tl, z, r, bathy_r, ssp_z)
         return fig
 

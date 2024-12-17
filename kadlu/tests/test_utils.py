@@ -84,6 +84,22 @@ def test_can_convert_grid_from_xy_to_ll():
     assert lon[0,1] == pytest.approx(lon_ref+10, 0.1)
     assert lat[0,1] == pytest.approx(lat_ref, 0.1)
 
+def test_can_convert_grid_from_xy_to_ll_with_z_coordinate():
+    lat_ref = 45
+    lon_ref = 10
+    xs = [0, 788E3]
+    ys = [0, 111E3]
+    zs = [0, 100, 200]
+    lat, lon, _ = XYtoLL(xs, ys, lat_ref, lon_ref, grid=True, z=zs)    
+    assert lat.shape[0] == 2
+    assert lat.shape[1] == 2
+    assert lat.shape[2] == 3
+    assert np.all(np.abs(lon[0,0,:] - lon_ref) < 0.1)
+    assert np.all(np.abs(lat[0,0,:] - lat_ref) < 0.1)
+    assert np.all(np.abs(lon[1,0,:] - lon_ref) < 0.1)
+    assert np.all(np.abs(lat[1,0,:] - (lat_ref+1)) < 0.1)
+    assert np.all(np.abs(lon[0,1,:] - (lon_ref+10)) < 0.1)
+    assert np.all(np.abs(lat[0,1,:] - lat_ref) < 0.1)
 
 def test_create_boolean_array():
     a = create_boolean_array(n=4, step=math.inf)

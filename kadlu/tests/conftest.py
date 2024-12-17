@@ -1,17 +1,8 @@
 import pytest
 import os
 import numpy as np
-import kadlu
 
 path_to_assets = os.path.join(os.path.dirname(__file__),"assets")
-
-# set storage dir for pytest
-path_to_storage_dir = os.path.join(os.path.dirname(__file__),"kadlu-data")
-if not os.path.exists(path_to_storage_dir):
-    os.makedirs(path_to_storage_dir)
-
-kadlu.storage_cfg(setdir=path_to_storage_dir)
-
 
 @pytest.fixture
 def one():

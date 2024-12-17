@@ -18,12 +18,12 @@ from os.path import isfile
 from hashlib import md5
 
 import numpy as np
-if platform.machine() == 'arm64':
-    warnings.warn(
-        "WWIII module requires the pygrib package which is not available for this platform"
-    )
-else:
-    import pygrib
+# if platform.machine() == 'arm64':
+#     warnings.warn(
+#         "WWIII module requires the pygrib package which is not available for this platform"
+#     )
+# else:
+#     import pygrib
 
 from kadlu import index
 from kadlu.geospatial.data_sources.data_util import (

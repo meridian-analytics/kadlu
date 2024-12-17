@@ -27,17 +27,17 @@ from .geospatial.data_sources.source_map import default_val as defaults
 from .geospatial.data_sources.load_from_file import load_netcdf, load_raster
 
 # data sources
-from .geospatial.data_sources.era5 import Era5 as era5
+from .geospatial.data_sources.era5_win import Era5 as era5
 from .geospatial.data_sources.gebco import Gebco as gebco
 from .geospatial.data_sources.hycom import Hycom as hycom
 from .geospatial.data_sources.wwiii import Wwiii as wwiii
 from .geospatial.data_sources.source_map import load_map
 
 # acoustic and environmental processing
-from .geospatial.ocean import Ocean
-from .sound.geophony import *
-from .sound.parabolic_equation import *
-from .sound.sound_speed import *
+#from .geospatial.ocean import Ocean
+#from .sound.geophony import *
+#from .sound.parabolic_equation import *
+#from .sound.sound_speed import *
 
 # file testing for files in kadlu_data/testfiles/
 from .tests.geospatial.data_sources.test_files import test_files
@@ -113,3 +113,13 @@ def load_file(filepath, **kwargs):
 
     else:
         assert False, f'error {filepath}: unknown file format - currently only .nc and .tif formats are accepted'
+
+
+# Expose these functions in the module's namespace
+__all__ = [
+    "index", "parallelindex", "database_cfg", "dt_2_epoch", "epoch_2_dt", "ext",
+    "index_arr", "reshape_2D", "reshape_3D", "reshape_3D_gridded", "storage_cfg",
+    "verbosity", "source_map", "defaults", "load_netcdf", "load_raster", "era5",
+    "gebco", "hycom", "wwiii", "load_map", "test_files", "plot_transm_loss_horiz",
+    "plot_transm_loss_vert", "load", "load_file"
+]

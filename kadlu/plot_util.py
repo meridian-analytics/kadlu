@@ -9,16 +9,16 @@ import matplotlib
 #matplotlib.use('TkAgg')
 #matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
-#import cartopy
-#import cartopy.crs as ccrs
-#import cartopy.feature as cfeature
+import cartopy
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 from scipy.interpolate import griddata
 
 from kadlu.geospatial.data_sources.source_map import load_map
 from kadlu.geospatial.data_sources.data_util import fmt_coords
 from kadlu.geospatial.data_sources.data_util import storage_cfg
 
-'''
+
 
 logging.getLogger('cartopy').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
@@ -75,7 +75,8 @@ def plot2D(var, source, plot_wind=False, save=False, **kwargs):
         kwargs['start'], kwargs['end'] = datetime.now(), datetime.now()
 
     data = load_map[f'{var}_{source}'](**kwargs)
-    val, lat, lon = data[:3].astype(float)
+    #val, lat, lon = data[:3].astype(float)
+    val, lat, lon = data[:3]
 
     # project data onto coordinate space
     extent = ccrs.Mercator().transform_points(
@@ -122,42 +123,49 @@ def plot2D(var, source, plot_wind=False, save=False, **kwargs):
                 zorder=9
             )
 
-    if plot_wind is not False:
-        if plot_wind.lower() == 'era5': 
-            #windfcnU, windfcnV = (Era5().load_wind_u, Era5().load_wind_v)
-            windfcnU, windfcnV = load_map['wind_u_era5'], load_map['wind_v_era5']
-        elif plot_wind.lower() == 'wwiii': 
-            #windfcnU, windfcnV = (Wwiii().load_wind_u, Wwiii().load_wind_v)
-            windfcnU, windfcnV = load_map['wind_u_wwiii'], load_map['wind_v_wwiii']
-        else: 
-            raise ValueError('invalid wind source. must be \'era5\' or \'wwiii\'')
+  
+    # ax.add_feature(coast, facecolor=fg, edgecolor=(0,0,0,1), zorder=11)
+    # gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linestyle='--',
+    #         zorder=12)
+    # gl.xlabels_top = False
+    # gl.ylabels_right = False
+    # gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
 
-        uval, ulat, ulon, utime = windfcnU(**kwargs)
-        vval, vlat, vlon, vtime = windfcnV(**kwargs)
-        assert(len(vval) == len(uval))  # this can be fixed with an SQL JOIN in load module
-        if len(np.unique(ulat)) == 1 or len(np.unique(ulon)) == 1:
-            raise RuntimeError(f'Not enough datapoints to plot windspeeds in region {fmt_coords(kwargs)}')
+    # # this appears to be a known bug
+    # # https://github.com/SciTools/cartopy/issues/1332
+    # for tick in ax.get_xticklabels(): 
+    #     tick.set_rotation(45)
 
-        ax.quiver(ulon, ulat, uval, vval, transform=ccrs.PlateCarree(), 
-                regrid_shape=20, zorder=10)
-
-    ax.add_feature(coast, facecolor=fg, edgecolor=(0,0,0,1), zorder=11)
-    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linestyle='--',
-            zorder=12)
+    # gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
+    # ax.tick_params(axis='x', rotation=45)
+    # vnorm = val if var == 'bathy' or var == 'bathymetry' else None
+    # plt.colorbar(matplotlib.cm.ScalarMappable(norm=config[var]['norm'](vnorm),
+    #             cmap=config[var]['cm']))
+    
+    
+    ax.add_feature(coast, facecolor=fg, edgecolor=(0, 0, 0, 1), zorder=11)
+    gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linestyle='--', zorder=12)
     gl.xlabels_top = False
     gl.ylabels_right = False
     gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
-
-    # this appears to be a known bug
-    # https://github.com/SciTools/cartopy/issues/1332
+    
+    # Known bug workaround for rotated tick labels
     for tick in ax.get_xticklabels(): 
         tick.set_rotation(45)
-
+    
     gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
     ax.tick_params(axis='x', rotation=45)
+    
+    # Variable normalization (example)
     vnorm = val if var == 'bathy' or var == 'bathymetry' else None
-    plt.colorbar(matplotlib.cm.ScalarMappable(norm=config[var]['norm'](vnorm),
-                cmap=config[var]['cm']))
+    norm = config[var]['norm'](vnorm)  # Assuming config[var]['norm'] is callable
+    cmap = config[var]['cm']
+    
+    # Create a ScalarMappable and explicitly link to colorbar
+    sm = matplotlib.cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])  # Dummy array needed for ScalarMappable
+    cb = plt.colorbar(sm, ax=ax, orientation='vertical', shrink=0.7)  # Associate with the axes
+    
 
     if save is not False:
         if not os.path.isdir(f'{storage_cfg()}figures'): 
@@ -230,7 +238,7 @@ def animate(var, source, kwargs, step=timedelta(hours=12), fps=30, plot_wind=Fal
 
     logging.info(f'saved animation to {savedir}{fname}')
     return 
-'''
+
 
 
 def plot_transm_loss_horiz(transm_loss, radial_axis, azimuthal_axis):
@@ -298,7 +306,8 @@ def plot_transm_loss_vert(transm_loss, vertical_axis, radial_axis, bathy_func=No
 
     # contour plot
     fig, ax = plt.subplots()
-    img = ax.contourf(x/1e3, y, transm_loss, 100, vmin=tl_min, vmax=tl_max, cmap=matplotlib.colormaps.get_cmap('viridis_r'))
+    img = ax.contourf(x/1e3, y, transm_loss, 100, vmin=tl_min, vmax=tl_max, 
+                      cmap=matplotlib.colormaps.get_cmap('viridis_r'))
     ax.invert_yaxis()
 
     # labels
@@ -329,11 +338,25 @@ def plot_transm_loss_vert(transm_loss, vertical_axis, radial_axis, bathy_func=No
         nz = min(1000, int(z_max))
         z = np.linspace(0, z_max, num=nz)
         ssp = ssp_func(z)
+        # Check if ssp has more dimensions than z
+    # Check if ssp needs reshaping
+    if ssp.shape != z.shape:
+        # Remove singleton dimensions
+        ssp_squeezed = np.squeeze(ssp)
+        
+        # Ensure the number of elements matches z
+        if ssp_squeezed.shape[0] == len(z):
+            ssp_final = ssp_squeezed
+        else:
+            raise ValueError(f"Dimensions mismatch: ssp has shape {ssp_squeezed.shape}, but z has shape {z.shape}.")
+    else:
+        ssp_final = ssp
+        
         axt = ax.twiny()
         dc = np.max(ssp) - np.min(ssp)
         axt.set_xlim(np.min(ssp)-0.2*dc, np.max(ssp)+0.2*dc)        
         axt.set_xlabel('c (m/s)')
-        axt.plot(ssp, z, 'w', linestyle=':')
+        axt.plot(ssp_final, z, 'w', linestyle=':')
 
     return fig
 

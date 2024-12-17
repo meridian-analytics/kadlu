@@ -2,137 +2,197 @@
     and interpolating ocean variables.
 """
 import logging
+from multiprocessing import Process
+
 import numpy as np
 from scipy.interpolate import NearestNDInterpolator
+
 import kadlu
-from kadlu.geospatial.interpolation import get_interpolator, GEOSPATIAL_DIMS
-from kadlu.geospatial.data_sources.data_util import fmt_coords, fmt_time
-from kadlu.geospatial.data_sources.source_map import load_map, precip_type_map
+# from kadlu import index
+from kadlu.geospatial.interpolation import (
+    Interpolator2D,
+    Interpolator3D,
+    Uniform2D,
+    Uniform3D,
+)
+from kadlu.geospatial.data_sources.data_util import (
+    dt_2_epoch,
+    fmt_coords,
+    reshape_2D,
+    reshape_3D,
+    verbosity,
+    # storage_cfg,
+)
+from kadlu.geospatial.data_sources.source_map import (
+    load_map,
+    precip_type_map,
+    var3d,
+)
 from kadlu.utils import center_point
 
-
-# Ocean variable types 
-kadlu_vartypes = np.unique([f.rsplit('_', 1)[0] for f in load_map.keys()])
+vartypes = np.unique([f.rsplit('_', 1)[0] for f in load_map.keys()])
 
 
-def _drop_dims(data, drop):
-    """ Helper function for dropping dimensions and averaging over degenerate data points """
-    if drop is None:
-        drop = []
+def worker(interpfcn, reshapefcn, cols, var, q):
+    """ compute interpolation in parallel worker process
 
-    if isinstance(drop, str):
-        drop = [drop]
-
-    if len(drop) == 0:
-        return data
-
-    v = data.pop("value")
-    n_dims = len(data)
-
-    # case I: regular grids
-    if np.ndim(v) == 0 or np.ndim(v) == n_dims:
-        # remove coordinate arrays for dropped dimensions
-        for dim in drop:
-            if dim in data:
-                del data[dim]
-
-        # average data values over dropped dimensions
-        axis = tuple([i for i,d in enumerate(GEOSPATIAL_DIMS) if d in drop and i < np.ndim(v)])
-        data["value"] = np.average(v, axis=axis)
-
-    # case II: irregular grids
-    else:
-        # remove coordinate arrays for dropped dimensions
-        for dim in drop:
-            if dim in data:
-                del data[dim]
-
-        # average data values over dropped dimensions
-        # TODO: implement this step
-        data["value"] = v
-
-        logger = logging.getLogger("kadlu")
-        logger.warning("Averaging over degenerate data points not implemented when dropping dimensions from irregular grids")
-
-    return data
-
-
-def _validate_loadvars(loadvars):
-    """ Check validity of data loading arguments provided to the Ocean class at initialisation.
-    
-        Args:
-            loadvars: dict
-                Data loading arguments
-
-        Returns:
-            vartypes: list(str)
-                Data types
-
-        Raises:
-            TypeError: if invalid argments are encountered
+        interpfcn:
+            callback function for interpolation
+        reshapefcn:
+            callback function for reshaping row data into matrix format
+            for interpolation
+        cols:
+            data as returned from load function
+        var:
+            variable type. used as key in Ocean().interps dictionary
+        q:
+            shared queue object to pass interpolation back to parent
     """
-    vartypes = []
-    for key in loadvars.keys():
-        vartype = key.lstrip("load_")
-        if vartype not in kadlu_vartypes:
-            err_msg = f'{key} is not a valid argument. Valid datasource args include: {", ".join([f"load_{v}" for v in kadlu_vartypes])}'
-            raise TypeError(err_msg)
-        
-        vartypes.append(vartype)
-
-    return vartypes
+    if verbosity() and isinstance(cols[0], (int, float)):
+        logging.info(
+            f'OCEAN {var.upper()}{"".join([" " for _ in range(11-len(var))])} '
+            f'loaded uniform value of {cols[0]} for interpolation')
+    elif verbosity():
+        logging.info(
+            f'OCEAN {var.upper()}{"".join([" " for _ in range(11-len(var))])} '
+            f'loaded {len(cols[0])} points for interpolation')
+    obj = interpfcn(**reshapefcn(cols))
+    q.put((var, obj))
+    return
 
 
 class Ocean():
-    """ Class for retrieving ocean data variables.
+    """ class for handling ocean data requests
 
-        Data will be loaded using the given data sources and 
-        geographic, depth, and temporal boundaries.
+        data will be loaded using the given data sources and boundaries
+        from arguments. an interpolation for each variable will be computed in
+        parallel
 
-        It is also possible to write your own data loading function. 
-        
-        The boundary arguments supplied to the Ocean class will be passed 
-        to the the data loading function, i.e., north, south, west, east, 
-        top, bottom, start, end.
+        data will be averaged over time frames for interpolation. for finer
+        temporal resolution, define smaller time boundaries
 
-        TODO: 
-            * [ ] Implement averaging across degenerate data points for irregular grids
-            * [ ] Re-implement interpolation of precipitation type
-            * [ ] Modify data loading classes so they return the data as a dict with keys lat,lon,epoch,depth instead of a numpy array.
+        any of the below load_args may also accept a callback function instead
+        of a string or array value if you wish to write your own data loading
+        function. the boundary arguments supplied here will be passed to the
+        callable, i.e. north, south, west, east, top, bottom, start, end
 
-        Args:
-            north, south: float
-                Latitude boundaries, in degrees
-            west, east: float
-                Longitude boundaries, in degrees
-            top, bottom: float
-                Depth range, in metres
-            start, end: datetime
-                UTC time range
-            drop: list(str)
-                Dimensions to be dropped. If dropping a dimension leads to degeneracy (multiple data 
-                points with same coordinates) the average value is used. NOT YET IMPLEMENTED
-            interp_args: dict
-                Used for passing keyword arguments to the interpolator. See 
-                `kadlu.geospatial.interpolation.get_interpolator` for allowed arguments.
+        callables or array arguments must be ordered by [val, lat, lon] for 2D
+        data, or [val, lat, lon, depth] for 3D data
+
+        args:
+            north, south:
+                latitude boundaries (float)
+            west, east:
+                longitude boundaries (float)
+            top, bottom:
+                depth range in metres (float)
+                only applies to salinity and temperature
+            start, end:
+                time range for data load query (datetime)
+                if multiple times exist within range, they will be averaged
+                before computing interpolation
             **loadvars:
-                Keyword args supplied as 'load_{v}' where v is either an
-                integer, float, array of shape [val, lat, lon[, epoch[, depth]]], 
-                dict with keys value, lat, lon, epoch, depth, or a string source identifier 
-                (e.g. `era5`) as described in the `source_map`
+                keyword args supplied as 'load_{v}' where v is either an
+                integer, float, array of [val, lat, lon[, time[, depth]]], or
+                string source as described by the source_map
 
-        Attrs:
+        attrs:
+            interps: dict
+                Dictionary of data interpolators
             origin: tuple(float, float)
                 Latitude and longitude coordinates of the centre point of the
                 geographic bounding box. This point serves as the origin of the
                 planar x-y coordinate system.
             boundaries: dict
                 Bounding box for the ocean volume in space and time
-            interpolators: dict
-                Dictionary of data interpolators
     """
+
+    def _prepare_args(self, loadvars):
+        ''' prepare arguments to pass to data loading functions '''
+        for key in loadvars.keys():
+            #if key != 'load_precip_type' and key.lstrip( 'load_') not in vartypes:
+            if key.lstrip('load_') not in vartypes:
+                raise TypeError(
+                    f'{key} is not a valid argument. '
+                    'valid datasource args include:\n'
+                    f'{", ".join([f"load_{v}" for v in vartypes])}')
+        self._load_args = [
+            loadvars[f'load_{v}'] if f'load_{v}' in loadvars.keys() else 0
+            for v in vartypes
+        ]
+        return
+
+    def _prepare_data_fcns(self):
+        ''' determine which data loading functions to use based on the
+            datasources provided by the user.
+            the user may also supply their own callback function
+        '''
+        callbacks = []
+        ix_range = range(len(vartypes))
+
+        for v, load_arg, ix in zip(vartypes, self._load_args, ix_range):
+
+            if callable(load_arg):
+                callbacks.append(load_arg)
+
+            elif isinstance(load_arg, str):
+                key = f'{v}_{load_arg.lower()}'
+                assert key in load_map.keys(
+                ), f'no map for {key} in load map: \n{load_map}'
+                callbacks.append(load_map[key])
+                #with index(storagedir=storage_cfg(), south=south, north=north, west=west, east=east, top=top, bottom=bottom, start=start, end=end) as fetchmap:
+                #    fetchmap(callback=load_map[f'{v}_{load_arg.lower()}'])
+
+            elif isinstance(load_arg, (int, float)):
+                callbacks.append(lambda val, south, west, start, top, **_: [
+                    val, south, west, dt_2_epoch(start), top
+                ])
+
+            elif isinstance(load_arg, (list, tuple, np.ndarray)):
+                if len(load_arg) not in (3, 4):
+                    raise ValueError(
+                        f'invalid array shape for load_{v}. '
+                        'arrays must be ordered by [val, lat, lon] '
+                        'for 2D data, or [val, lat, lon, depth] for 3D data')
+                callbacks.append(lambda val, **_: val)
+
+            else:
+                raise TypeError(
+                    f'invalid type for load_{v}. '
+                    'valid types include string, float, array, and callable')
+
+        self._callbacks = callbacks
+        return
+
+    def _prepare_processing_pipeline(self):
+        ''' call data loading functions and store data as attribute.
+            determine which reshaping function and interpolation
+            function should be used for each requested data type
+        '''
+        is_3D = [v in var3d for v in vartypes]
+        is_arr = [not isinstance(arg, (int, float)) for arg in self._load_args]
+        columns = [
+            fcn(val=val, **self.boundaries)
+            for fcn, val in zip(self._callbacks, self._load_args)
+        ]
+        intrpmap = [(Uniform2D, Uniform3D), (Interpolator2D, Interpolator3D)]
+        columns = columns
+        reshapers = [reshape_3D if v else reshape_2D for v in is_3D]
+        interpolators = map(lambda x, y: intrpmap[x][y], is_arr, is_3D)
+
+        # assert that no empty arrays were returned by load function
+        for col, var in zip(columns, vartypes):
+            if isinstance(col, dict) or isinstance(col[0], (int, float)):
+                continue
+            assert len(col[0]) > 0, (f'no data found for {var} in region '
+                                     f'{fmt_coords(dict(**self.boundaries))}. '
+                                     f'consider expanding the region')
+
+        return columns, reshapers, interpolators
+
     def __init__(
         self,
+        *,
         south=kadlu.defaults['south'],
         west=kadlu.defaults['west'],
         north=kadlu.defaults['north'],
@@ -141,133 +201,96 @@ class Ocean():
         top=kadlu.defaults['top'],
         start=kadlu.defaults['start'],
         end=kadlu.defaults['end'],
-        drop=None,
-        interp_args=None,
         **loadvars,
     ):
-        self.name = self.__class__.__name__
+        self.interps = {}
+        self.boundaries = dict(south=south,
+                               north=north,
+                               west=west,
+                               east=east,
+                               top=top,
+                               bottom=bottom,
+                               start=start,
+                               end=end)
 
-        self.logger = logging.getLogger("kadlu")
+        self._prepare_args(loadvars=loadvars)
+        self._prepare_data_fcns()
+        columns, reshapers, interpolators = self._prepare_processing_pipeline()
 
-        default_value = 0
+        # q = Queue()
 
-        if interp_args is None:
-            interp_args = dict()
-            
-        # confirm validity of data loading args
-        vartypes = _validate_loadvars(loadvars)
+        attributes = []
+        parallel = False
 
-        # ocean spatio-temporal boundaries
-        self.boundaries = dict(
-            south=south,
-            north=north,
-            west=west,
-            east=east,
-            top=top,
-            bottom=bottom,
-            start=start,
-            end=end
-        )
+        if parallel:
+            interpolations = map(lambda i, r, c, v, q=q: Process(
+                target=worker, args=(i, r, c, v, q)),
+                                 interpolators,
+                                 reshapers,
+                                 columns,
+                                 vartypes)
+            for i in interpolations:
+                i.start()
+            # set_attributes()
+            for i in interpolations:
+                i.join()
 
-        # log info
-        info_msg = f"Initializing Ocean in region {fmt_coords(self.boundaries)}"\
-                    + f" for time period {fmt_time(self.boundaries)}"\
-                    + f" with variables: {vartypes}"
-        self.logger.info(info_msg)
+        else:
+            for i, r, c, v in zip(interpolators, reshapers, columns, vartypes):
+                logging.debug(f'interpolating {v}')
+                logging.debug(f'i = {i}\n r = {r}\nc = {c}\nv = {v}')
+                obj = i(**r(c))
+                # q.put((v, obj))
+                attributes.append((v, obj))
+            # set_attributes()
+            # def set_attributes(q):
 
-        # center point of XY coordinate system
         self.origin = center_point(lat=[south, north], lon=[west, east])
+        #for v in vartypes: self.interps[v].origin = self.origin
+        self.precip_src = loadvars[
+            'load_precip_type'] if 'load_precip_type' in loadvars.keys(
+            ) else None
+        #x = 0
+        #while x <= len(vartypes):
+        while len(attributes) > 0:
+            #x = x + 1
+            #obj = q.get()
+            obj = attributes.pop()
+            self.interps[obj[0]] = obj[1]
+            setattr(
+                self, obj[0],
+                eval(
+                    f'lambda lat, lon, {"depth," if (obj[0] in var3d) else ""} grid=False, **kw: obj[1].interp(lat, lon, {"depth," if (obj[0] in var3d) else ""} grid, **kw)',
+                    dict(obj=obj)))
+            setattr(
+                self, f'{obj[0]}_xy',
+                eval(
+                    f'lambda x, y,     {"z,"     if (obj[0] in var3d) else ""} grid=False, **kw: obj[1].interp_xy(x, y,  {"z,"     if (obj[0] in var3d) else ""} grid, **kw)',
+                    dict(obj=obj)))
 
-        # load data and initialize interpolators
-        self.interpolators = dict()
-        for vartype in kadlu_vartypes:
+        #q.close()
 
-            # get the data loading argument for the given data type;
-            # if no argument was provided, use 0 as the default data value
-            load_arg = loadvars.get(f"load_{vartype}", default_value)
+        return
 
-            # load the data
-            if callable(load_arg):
-                data = load_arg(**self.boundaries)
+    def bathymetry_deriv(self, lat, lon, axis, grid=False):
+        assert axis in ('lat', 'lon'), 'axis must be \'lat\' or \'lon\''
+        return self.interps['bathymetry'].interp(
+            lat,
+            lon,
+            grid,
+            lat_deriv_order=(axis == 'lat'),
+            lon_deriv_order=(axis == 'lon'))
 
-            elif isinstance(load_arg, str):
-                key = f'{vartype}_{load_arg.lower()}'
-                assert key in load_map.keys(), f"No entry found for {key} in Kadlu's load map:\n{load_map}"
+    def bathymetry_deriv_xy(self, x, y, axis, grid=False):
+        assert axis in ('x', 'y'), 'axis must be \'x\' or \'y\''
+        return self.interps['bathymetry'].interp_xy(
+            x,
+            y,
+            grid,
+            x_deriv_order=(axis == 'x'),
+            y_deriv_order=(axis == 'y'))
 
-                data = load_map[key](**self.boundaries)
-
-            elif isinstance(load_arg, (int, float)):
-                data = [load_arg]
-
-            elif isinstance(load_arg, (list, tuple, np.ndarray, dict)):
-                if len(load_arg) > 5:
-                    err_msg = f'Invalid array shape for load_{vartype}. Arrays must be ordered by [val, lat, lon[, epoch[, depth]]].'
-                    raise ValueError(err_msg)
-
-                data = load_arg
-
-            else:
-                err_msg = f'Invalid type for load_{vartype}. Valid types include string, float, array, dict, and callable'
-                raise TypeError(err_msg)
-
-            # if the data are not already organized into a dict, place the arrays in a dict 
-            # using the standard kadlu ordering: value,lat,lon,epoch,depth
-            if not isinstance(data, dict):
-                keys = ["value"] + GEOSPATIAL_DIMS
-                data = {keys[i]: arr for i,arr in enumerate(data)}
-
-            # info message
-            v = data["value"]
-            if not v is default_value:
-                info_msg = f"Finished loading {vartype}"
-                for k,arr in data.items():
-                    s = arr.shape if np.ndim(arr) > 0 else "scalar"
-                    info_msg += f"\n  {k.rjust(5)}: shape={s} min={np.min(arr):.3f} max={np.max(arr):.3f} avg={np.mean(arr):.3f}"
-
-                self.logger.info(info_msg)
-
-            # drop dimensions
-            data = _drop_dims(data, drop)
-
-            # pass data to interpolator
-            self.interpolators[vartype] = get_interpolator(**data, name=vartype, origin=self.origin, **interp_args)
-
-        """
-        # TODO: review this, update as needed
-        self.precip_src = loadvars['load_precip_type'] if 'load_precip_type' in loadvars.keys() else None
-        """
-
-        # create interpolation method for every variable type
-        for vartype,interp in self.interpolators.items():
-            setattr(self, vartype, interp)
-
-
-
-'''
-    def bathymetry_deriv(self, axis, **kwargs):
-        """ Interpolates the bathymetric slope along either the south-north (latitude, y) or east-west (longitude, x) axis.
-
-            Args:
-                axis: str
-                    Axis along which to compute the derivative. Can be `lat`, `lon`, `x`, or `y`
-
-            Returns:
-                : array-like
-                    The slope values, in m/deg if axis is lat/lon, or dimensionless if axis is x/y
-        """
-        assert axis in ('lat', 'lon', 'x', 'y'), 'axis must be `lat`, `lon`, `x`, or `y`'
-
-        dlat = (axis == "lat")
-        dlon = (axis == "lon")
-        dx   = (axis == "x")
-        dy   = (axis == "y")
-
-        return self.interps['bathymetry'](dlat=dlat, dlon=dlon, dx=dx, dy=dy, **kwargs)
-'''
-
-"""
-    def precip_type(self, **kwargs):
-        "TODO: provide documentation for this method"
+    def precip_type(self, lat, lon, epoch, grid=False):
         callback, varmap = precip_type_map[self.precip_src]
         v, y, x, t = callback(west=min(lon),
                               east=max(lon),
@@ -277,6 +300,18 @@ class Ocean():
                               end=self.boundaries['end'])
         return np.array([
             varmap[v]
-            for v in NearestNDInterpolator((y, x, t), v)(kwargs["lat"], lon, epoch)
+            for v in NearestNDInterpolator((y, x, t), v)(lat, lon, epoch)
         ])
-"""
+
+    def precip_type_xy(self, x, y, epoch, grid=False):
+        callback, varmap = precip_type_map[self.precip_src]
+        v, yy, xx, t = callback(west=min(x),
+                                east=max(x),
+                                south=min(y),
+                                north=max(y),
+                                start=self.boundaries['start'],
+                                end=self.boundaries['end'])
+        return np.array([
+            varmap[v]
+            for v in NearestNDInterpolator((xx, yy, t), v)(x, y, epoch)
+        ])

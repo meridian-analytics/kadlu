@@ -30,7 +30,7 @@ from kadlu.geospatial.data_sources.data_util import (
     str_def,
 )
 import copernicusmarine 
-import netCDF4
+import h5netcdf
 
 """
     Names of the tables that will be created in the kadlu geospatial.db database for storing CMEMS data.
@@ -172,7 +172,7 @@ def fetch_cmems(var, *, west, east, south, north, start, **_):
 
     # open downloaded file
     assert isfile(target)
-    nc = netCDF4.Dataset(target)
+    nc = h5netcdf.File(target)
 
     # load data into memory (as masked Numpy arrays)
     vals = nc.variables[var_cmems][:,0,:,:]  #(time,depth,lat,lon)

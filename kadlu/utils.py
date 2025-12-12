@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from scipy.interpolate import interp1d
-from netCDF4 import Dataset
+import h5netcdf
 import scipy.io as sio
 
 # Equatorial radius (6,378.1370 km)
@@ -443,7 +443,7 @@ def load_data_from_file(path, val_name='bathy', lat_name='lat', lon_name='lon', 
 
     # load data
     if ext == '.nc':  # NetCDF
-        d = Dataset(path)
+        d = h5netcdf.File(path)
         val = np.array(d[val_name])
         lat = np.array(d[lat_name])
         lon = np.array(d[lon_name])

@@ -25,7 +25,6 @@ setup(
         'imageio',
         'matplotlib',
         'mpl_scatter_density',
-        'netcdf4',
         'numpy<2.0.0',
         'pygrib',  # DEPENDS ON eccodes binaries
         'pyproj',
@@ -36,6 +35,8 @@ setup(
         'xarray',
         'copernicusmarine',  #requires numpy<2.0.0
         'getgfs',
+        'h5netcdf',  #required by copernicusmarine
+        'h5py<=3.9',  #required by copernicusmarine [https://github.com/h5py/h5py/issues/2453]
     ],
     #setup_requires=[ 'pytest-runner', ],
     #tests_require=['pytest', 'pytest-parallel'],

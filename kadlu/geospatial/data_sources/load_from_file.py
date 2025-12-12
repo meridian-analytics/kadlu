@@ -11,7 +11,7 @@ matplotlib.use('tkagg')
 '''
 import mpl_scatter_density
 import matplotlib.pyplot as plt
-import netCDF4
+import h5netcdf
 import numpy as np
 
 from kadlu.geospatial.data_sources.data_util import (
@@ -170,7 +170,7 @@ def load_netcdf(filename,
                  end=datetime.now(),
                  top=0,
                  bottom=9999))
-    ncfile = netCDF4.Dataset(filename)
+    ncfile = h5netcdf.File(filename)
 
     varmap = dict(
         #MAPSTA='f',  # ifremer tag: appears to be a land mask

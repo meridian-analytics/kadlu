@@ -1,5 +1,5 @@
 import os
-import netCDF4 as nc4
+import h5netcdf.legacyapi as nc4
 import numpy as np
 import json
 
